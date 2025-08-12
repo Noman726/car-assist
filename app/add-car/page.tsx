@@ -8,13 +8,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Car, ArrowLeft, Upload } from "lucide-react"
+import { Car, ArrowLeft, Upload, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
+import { withAuth } from "@/lib/with-auth"
+import { carStorage } from "@/lib/storage"
 
-export default function AddCarPage() {
+function AddCarPage() {
   const router = useRouter()
+  const { user } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     carName: "",
     registrationNumber: "",
@@ -31,11 +37,33 @@ export default function AddCarPage() {
     notes: "",
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Car data:", formData)
-    // Handle form submission
-    router.push("/dashboard")
+    setError("")
+
+    if (!user) {
+      setError("User not authenticated")
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Create the car with user ID
+      const carData = {
+        ...formData,
+        userId: user.id
+      }
+      
+      const newCar = carStorage.createCar(carData)
+      console.log("Car added:", newCar)
+      router.push("/dashboard")
+    } catch (err) {
+      console.error("Error adding car:", err)
+      setError("Failed to add car. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -68,61 +96,70 @@ export default function AddCarPage() {
               <CardDescription>Enter your vehicle details to add it to your digital garage</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Basic Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md text-red-800">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm">{error}</span>
+                </div>
+              )}
+              
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="carName">What do you call your car?</Label>
-                      <Input
-                        id="carName"
-                        placeholder="e.g., My Swift, Dad's City, Office car"
-                        value={formData.carName}
-                        onChange={(e) => handleInputChange("carName", e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="registrationNumber">Number Plate</Label>
-                      <Input
-                        id="registrationNumber"
-                        placeholder="MH 12 AB 1234"
-                        value={formData.registrationNumber}
-                        onChange={(e) => handleInputChange("registrationNumber", e.target.value)}
-                        required
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="carName">What do you call your car?</Label>
+                    <Input
+                      id="carName"
+                      placeholder="e.g., My Swift, Dad's City, Office car"
+                      value={formData.carName}
+                      onChange={(e) => handleInputChange("carName", e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="chassisNumber">Chassis Number</Label>
-                      <Input
-                        id="chassisNumber"
-                        placeholder="Enter chassis number"
-                        value={formData.chassisNumber}
-                        onChange={(e) => handleInputChange("chassisNumber", e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="engineNumber">Engine Number</Label>
-                      <Input
-                        id="engineNumber"
-                        placeholder="Enter engine number"
-                        value={formData.engineNumber}
-                        onChange={(e) => handleInputChange("engineNumber", e.target.value)}
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="registrationNumber">Number Plate</Label>
+                    <Input
+                      id="registrationNumber"
+                      placeholder="MH 12 AB 1234"
+                      value={formData.registrationNumber}
+                      onChange={(e) => handleInputChange("registrationNumber", e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
                   </div>
                 </div>
 
-                {/* Vehicle Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="chassisNumber">Chassis Number</Label>
+                    <Input
+                      id="chassisNumber"
+                      placeholder="Enter chassis number"
+                      value={formData.chassisNumber}
+                      onChange={(e) => handleInputChange("chassisNumber", e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="engineNumber">Engine Number</Label>
+                    <Input
+                      id="engineNumber"
+                      placeholder="Enter engine number"
+                      value={formData.engineNumber}
+                      onChange={(e) => handleInputChange("engineNumber", e.target.value)}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+              </div>                {/* Vehicle Details */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Vehicle Details</h3>
 
@@ -286,12 +323,12 @@ export default function AddCarPage() {
                 {/* Submit Buttons */}
                 <div className="flex gap-4 pt-6">
                   <Link href="/dashboard" className="flex-1">
-                    <Button variant="outline" className="w-full bg-transparent">
+                    <Button variant="outline" className="w-full bg-transparent" disabled={isLoading}>
                       Cancel
                     </Button>
                   </Link>
-                  <Button type="submit" className="flex-1">
-                    Add Car
+                  <Button type="submit" className="flex-1" disabled={isLoading}>
+                    {isLoading ? "Adding Car..." : "Add Car"}
                   </Button>
                 </div>
               </form>
@@ -302,3 +339,5 @@ export default function AddCarPage() {
     </div>
   )
 }
+
+export default withAuth(AddCarPage)
