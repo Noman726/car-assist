@@ -70,6 +70,30 @@ function DashboardPage() {
     router.push("/")
   }
 
+  const handleDeleteCar = async (carId: string, carName: string) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${carName}"? This action cannot be undone and will remove all associated documents and data.`
+    )
+
+    if (confirmDelete) {
+      try {
+        const success = carStorage.deleteCar(carId)
+        if (success) {
+          // Refresh the cars list
+          if (user) {
+            const updatedCars = carStorage.getCarsByUserId(user.id)
+            setCars(updatedCars)
+          }
+        } else {
+          alert("Failed to delete car")
+        }
+      } catch (error) {
+        alert("Error deleting car")
+        console.error(error)
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b">
@@ -171,11 +195,24 @@ function DashboardPage() {
                             View Details
                           </Button>
                         </Link>
+                        <Link href={`/car/${car.id}/edit`}>
+                          <Button variant="outline" size="sm">
+                            Edit
+                          </Button>
+                        </Link>
                         <Link href={`/car/${car.id}/documents`}>
                           <Button variant="outline" size="sm">
                             Documents
                           </Button>
                         </Link>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleDeleteCar(car.id, car.carName)}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
