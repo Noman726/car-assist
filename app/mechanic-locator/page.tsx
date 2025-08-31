@@ -36,6 +36,10 @@ type Mechanic = {
 
 type LocationPermissionState = 'prompt' | 'granted' | 'denied' | 'unsupported'
 
+// Emergency phone number for car breakdowns (24/7 roadside assistance)
+const EMERGENCY_PHONE = "+91-9876543210" // Replace with actual emergency roadside assistance number
+const EMERGENCY_DISPLAY = "9876 543 210" // Formatted for display
+
 export default function MechanicLocatorPage() {
   const [searchLocation, setSearchLocation] = useState("")
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -47,6 +51,19 @@ export default function MechanicLocatorPage() {
   const [searchRadius, setSearchRadius] = useState(1500) // Default to 1.5km for nearby mechanics
 
   const km = (m: number) => (m / 1000).toFixed(1) + " km"
+
+  // Emergency call keyboard shortcut (Ctrl/Cmd + E)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'e') {
+        event.preventDefault();
+        handleEmergencyCall(EMERGENCY_PHONE, true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const checkLocationPermission = async () => {
     if (!navigator.permissions || !navigator.geolocation) {
@@ -141,7 +158,46 @@ export default function MechanicLocatorPage() {
     setShowLocationHelp(shouldShowHelp)
   }
 
-  const handleEmergencyCall = (phone: string) => window.open(`tel:${phone}`)
+  const handleEmergencyCall = (phone: string, isEmergency: boolean = false) => {
+    if (isEmergency) {
+      // For emergency calls, show confirmation and additional info
+      const confirmCall = confirm(
+        `🚨 EMERGENCY ROADSIDE ASSISTANCE\n\n` +
+        `You are about to call: ${EMERGENCY_DISPLAY}\n\n` +
+        `This is a 24/7 emergency helpline for:\n` +
+        `• Car breakdowns\n` +
+        `• Flat tire assistance\n` +
+        `• Jump start service\n` +
+        `• Emergency towing\n\n` +
+        `Click OK to make the call now.`
+      );
+      
+      if (confirmCall) {
+        // Try to make the call
+        try {
+          window.open(`tel:${phone}`, '_self');
+          
+          // Show additional help after attempting call
+          setTimeout(() => {
+            alert(
+              `📞 Call initiated!\n\n` +
+              `If the call didn't work:\n` +
+              `• Manually dial: ${EMERGENCY_DISPLAY}\n` +
+              `• Have your location ready: ${coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : 'Getting location...'}\n` +
+              `• Describe your car issue clearly\n\n` +
+              `Help is on the way! 🚗💨`
+            );
+          }, 500);
+        } catch (error) {
+          alert(`Call failed. Please manually dial: ${EMERGENCY_DISPLAY}`);
+        }
+      }
+    } else {
+      // For regular mechanic calls, just dial
+      window.open(`tel:${phone}`);
+    }
+  };
+
   const handleGetDirections = (addressOrCoords: string) => {
     const encoded = encodeURIComponent(addressOrCoords)
     window.open(`https://maps.google.com/?q=${encoded}`, "_blank")
@@ -271,17 +327,66 @@ export default function MechanicLocatorPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
-                  <Phone className="h-5 w-5 text-white" />
+                <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center animate-pulse">
+                  <Phone className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-red-900">Car broke down?</h3>
                   <p className="text-sm text-red-700">Don't panic - call our emergency line</p>
+                  <p className="text-xs text-red-600 font-mono bg-red-100 px-2 py-1 rounded mt-1">
+                    📞 {EMERGENCY_DISPLAY} (24/7)
+                  </p>
                 </div>
               </div>
-              <Button className="bg-red-600 hover:bg-red-700" onClick={() => handleEmergencyCall("+91 1800-123-4567")}>
-                Call Now
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg" 
+                  onClick={() => handleEmergencyCall(EMERGENCY_PHONE, true)}
+                  size="lg"
+                  title="Emergency Call (Press Ctrl+E for quick access)"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call Now
+                </Button>
+                <p className="text-xs text-red-600 text-center">Emergency roadside assistance</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Emergency Services Info */}
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Car className="h-5 w-5 text-white" />
+                </div>
+                <h4 className="font-medium text-orange-900">Breakdown Service</h4>
+                <p className="text-xs text-orange-700">Jump start, tire change, fuel</p>
+              </div>
+              <div className="text-center">
+                <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Wrench className="h-5 w-5 text-white" />
+                </div>
+                <h4 className="font-medium text-orange-900">Emergency Towing</h4>
+                <p className="text-xs text-orange-700">24/7 towing to nearest garage</p>
+              </div>
+              <div className="text-center">
+                <div className="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <MapPin className="h-5 w-5 text-white" />
+                </div>
+                <h4 className="font-medium text-orange-900">Location Sharing</h4>
+                <p className="text-xs text-orange-700">GPS coordinates: {coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : 'Getting location...'}</p>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-orange-100 rounded-lg">
+              <p className="text-sm text-orange-800 text-center">
+                <strong>Before calling:</strong> Move to a safe location, turn on hazard lights, and have your location ready
+              </p>
+              <p className="text-xs text-orange-600 text-center mt-2">
+                💡 Quick tip: Press <kbd className="px-1 py-0.5 bg-orange-200 rounded text-xs">Ctrl+E</kbd> anywhere on this page to call emergency
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -582,7 +687,7 @@ export default function MechanicLocatorPage() {
                     Get Directions
                   </Button>
                   {mechanic.phone ? (
-                    <Button size="sm" onClick={() => handleEmergencyCall(mechanic.phone!)} className="bg-green-600 hover:bg-green-700">
+                    <Button size="sm" onClick={() => handleEmergencyCall(mechanic.phone!, false)} className="bg-green-600 hover:bg-green-700">
                       <Phone className="h-4 w-4 mr-2" />
                       Call {mechanic.phone}
                     </Button>
@@ -611,23 +716,50 @@ export default function MechanicLocatorPage() {
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-4">
-              <Button variant="outline" className="h-auto p-4 bg-transparent">
+              <Button 
+                variant="outline" 
+                className="h-auto p-4 bg-transparent hover:bg-red-50 border-red-200"
+                onClick={() => handleEmergencyCall(EMERGENCY_PHONE, true)}
+              >
                 <div className="text-center">
-                  <Phone className="h-6 w-6 mx-auto mb-2" />
-                  <p className="font-medium">24/7 Support</p>
-                  <p className="text-sm text-gray-600">Call our helpline</p>
+                  <Phone className="h-6 w-6 mx-auto mb-2 text-red-600" />
+                  <p className="font-medium text-red-700">24/7 Emergency Support</p>
+                  <p className="text-sm text-red-600">Call {EMERGENCY_DISPLAY}</p>
                 </div>
               </Button>
-              <Button variant="outline" className="h-auto p-4 bg-transparent">
+              <Button 
+                variant="outline" 
+                className="h-auto p-4 bg-transparent hover:bg-blue-50 border-blue-200"
+                onClick={() => {
+                  const message = coords 
+                    ? `Need emergency towing at location: ${coords.lat}, ${coords.lng}`
+                    : 'Need emergency towing service';
+                  handleEmergencyCall(EMERGENCY_PHONE, true);
+                }}
+              >
                 <div className="text-center">
-                  <Car className="h-6 w-6 mx-auto mb-2" />
-                  <p className="font-medium">Request Towing</p>
-                  <p className="text-sm text-gray-600">Emergency towing service</p>
+                  <Car className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+                  <p className="font-medium text-blue-700">Request Towing</p>
+                  <p className="text-sm text-blue-600">Emergency towing service</p>
                 </div>
               </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* Floating Emergency Button */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button 
+            className="bg-red-600 hover:bg-red-700 text-white shadow-2xl rounded-full w-16 h-16 p-0 animate-pulse hover:animate-none"
+            onClick={() => handleEmergencyCall(EMERGENCY_PHONE, true)}
+            title="Emergency Call - Car Breakdown"
+          >
+            <Phone className="h-6 w-6" />
+          </Button>
+          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
+            SOS
+          </div>
+        </div>
       </div>
     </div>
   )
