@@ -82,28 +82,63 @@ out center tags 50;
         if (!center) return null
         const tags = el.tags || {}
 
+        const distance = haversineMeters(lat, lng, center.lat, center.lon)
+        
+        // Additional safety check: ensure the mechanic is actually within the requested radius
+        if (distance > radius) {
+          console.log(`🚫 Filtering out ${tags.name || 'Mechanic'} - distance ${Math.round(distance)}m exceeds radius ${radius}m`)
+          return null
+        }
+
         const address =
           tags["addr:full"] ||
-          [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"], tags["addr:state"], tags["addr:postcode"]]
-            .filter(Boolean)
-            .join(", ") || null
+          [
+            tags["addr:housenumber"], 
+            tags["addr:street"], 
+            tags["addr:suburb"] || tags["addr:neighbourhood"],
+            tags["addr:city"], 
+            tags["addr:state"] || tags["addr:province"], 
+            tags["addr:postcode"]
+          ].filter(Boolean).join(", ") ||
+          tags["addr:street"] ||
+          null
 
-        return {
+        // Try to get more phone number variations
+        const phone = 
+          tags["phone"] || 
+          tags["contact:phone"] || 
+          tags["telephone"] ||
+          tags["mobile"] ||
+          null
+
+        const mechanic = {
           id: `${el.type}/${el.id}`,
           name: tags["name"] || "Mechanic / Car Repair",
           lat: center.lat,
           lng: center.lon,
-          distanceMeters: haversineMeters(lat, lng, center.lat, center.lon),
+          distanceMeters: distance,
           address,
-          phone: tags["phone"] || tags["contact:phone"] || null,
+          phone,
           openingHours: tags["opening_hours"] || null,
         } as Mechanic
+
+        console.log(`✅ Found mechanic: ${mechanic.name} at ${Math.round(distance)}m${phone ? ` | Phone: ${phone}` : ' | No phone'}${address ? ` | Address: ${address.substring(0, 50)}...` : ' | No address'}`)
+        return mechanic
       })
       .filter(Boolean) as Mechanic[]
 
     items.sort((a, b) => a.distanceMeters - b.distanceMeters)
+    
+    console.log(`📍 Returning ${items.length} mechanics within ${radius}m of (${lat}, ${lng})`)
+    if (items.length > 0) {
+      console.log(`📏 Closest mechanic: ${items[0].name} at ${Math.round(items[0].distanceMeters)}m`)
+      console.log(`📏 Furthest mechanic: ${items[items.length-1].name} at ${Math.round(items[items.length-1].distanceMeters)}m`)
+    }
 
-    return NextResponse.json({ results: items })
+    // Limit to closest 10 mechanics to keep results manageable and truly "nearby"
+    const limitedResults = items.slice(0, 10)
+
+    return NextResponse.json({ results: limitedResults })
   } catch (err: any) {
     return NextResponse.json({ error: "Unexpected error", message: err?.message || String(err) }, { status: 500 })
   }

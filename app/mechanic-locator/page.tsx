@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LocationPermissionHelper } from "@/components/location-permission-helper"
 import { Car, ArrowLeft, MapPin, Phone, Star, Navigation, Clock, Wrench } from "lucide-react"
 import Link from "next/link"
@@ -30,6 +31,7 @@ export default function MechanicLocatorPage() {
   const [mechanics, setMechanics] = useState<Mechanic[]>([])
   const [locationPermission, setLocationPermission] = useState<LocationPermissionState>('prompt')
   const [showLocationHelp, setShowLocationHelp] = useState(false)
+  const [searchRadius, setSearchRadius] = useState(1500) // Default to 1.5km for nearby mechanics
 
   const km = (m: number) => (m / 1000).toFixed(1) + " km"
 
@@ -54,8 +56,17 @@ export default function MechanicLocatorPage() {
     console.log("🧪 Testing with mock location (Mumbai)")
     const mockCoords = { lat: 19.0760, lng: 72.8777 } // Mumbai coordinates
     setCoords(mockCoords)
-    setSearchLocation(`${mockCoords.lat.toFixed(5)}, ${mockCoords.lng.toFixed(5)}`)
+    setSearchLocation(`Mock Location: ${mockCoords.lat.toFixed(5)}, ${mockCoords.lng.toFixed(5)}`)
+    console.log("🔄 Using mock location instead of GPS")
     await fetchMechanics(mockCoords.lat, mockCoords.lng)
+  }
+
+  const clearLocation = () => {
+    console.log("🧹 Clearing location and mechanics")
+    setCoords(null)
+    setSearchLocation("")
+    setMechanics([])
+    setError(null)
   }
 
   const handleManualSearch = async () => {
@@ -68,11 +79,23 @@ export default function MechanicLocatorPage() {
     setError(null)
 
     try {
-      // For now, we'll use a mock geocoding - in a real app you'd use Google Geocoding API
-      // This is just a demonstration of how you could handle manual location entry
-      const mockCoords = { lat: 19.0760, lng: 72.8777 } // Mumbai coordinates as fallback
-      setCoords(mockCoords)
-      await fetchMechanics(mockCoords.lat, mockCoords.lng)
+      // Check if user entered coordinates directly
+      const coordMatch = searchLocation.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/)
+      if (coordMatch) {
+        const lat = parseFloat(coordMatch[1])
+        const lng = parseFloat(coordMatch[2])
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          console.log(`📍 Using user-entered coordinates: ${lat}, ${lng}`)
+          const manualCoords = { lat, lng }
+          setCoords(manualCoords)
+          setSearchLocation(`Manual: ${lat.toFixed(5)}, ${lng.toFixed(5)}`)
+          await fetchMechanics(lat, lng)
+          return
+        }
+      }
+
+      // For now, if not coordinates, show helpful message
+      setError("Please enter coordinates in format: latitude, longitude (e.g., 18.9592, 72.8385) or use GPS location")
     } catch (error) {
       setError("Failed to search for mechanics at the specified location")
     } finally {
@@ -117,7 +140,7 @@ export default function MechanicLocatorPage() {
     setError(null)
     
     try {
-      const apiUrl = `/api/mechanics?lat=${lat}&lng=${lng}&radius=4000`
+      const apiUrl = `/api/mechanics?lat=${lat}&lng=${lng}&radius=${searchRadius}`
       console.log(`📡 API call: ${apiUrl}`)
       
       const res = await fetch(apiUrl, { 
@@ -180,10 +203,10 @@ export default function MechanicLocatorPage() {
         console.log("✅ GPS position obtained:", pos.coords)
         const c = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         setCoords(c)
-        setSearchLocation(`${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`)
+        setSearchLocation(`GPS Location: ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`)
         setLocationPermission('granted')
         
-        console.log("🔧 Fetching mechanics for coordinates:", c)
+        console.log("🔧 Fetching mechanics for GPS coordinates:", c)
         try {
           await fetchMechanics(c.lat, c.lng)
         } catch (error) {
@@ -259,7 +282,11 @@ export default function MechanicLocatorPage() {
             </CardTitle>
             <CardDescription>
               {coords ? (
-                `Showing mechanics near your location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+                searchLocation.includes("GPS") ? 
+                  `Using your real GPS location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})` :
+                searchLocation.includes("Mock") ?
+                  `Using test location in Mumbai (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})` :
+                  `Showing mechanics near your location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
               ) : locationPermission === 'denied' ? (
                 "Location access denied - please enable to find nearby mechanics"
               ) : locationPermission === 'unsupported' ? (
@@ -272,7 +299,7 @@ export default function MechanicLocatorPage() {
           <CardContent>
             <div className="flex gap-4">
               <Input
-                placeholder="Enter your location or let us detect it..."
+                placeholder="Enter coordinates (e.g., 18.9592, 72.8385) or use GPS..."
                 value={searchLocation}
                 onChange={(e) => setSearchLocation(e.target.value)}
                 className="flex-1"
@@ -295,7 +322,58 @@ export default function MechanicLocatorPage() {
               <Button variant="outline" onClick={testWithMockLocation} disabled={loading}>
                 Test Location
               </Button>
+              {coords && (
+                <Button variant="outline" onClick={clearLocation} className="text-red-600">
+                  Clear Location
+                </Button>
+              )}
             </div>
+            
+            {/* Search Radius Selector */}
+            <div className="flex items-center gap-3 mt-4">
+              <label className="text-sm font-medium text-gray-700">Search Radius:</label>
+              <Select
+                value={searchRadius.toString()}
+                onValueChange={(value) => {
+                  setSearchRadius(parseInt(value))
+                  // Re-fetch mechanics if we have coordinates
+                  if (coords) {
+                    fetchMechanics(coords.lat, coords.lng)
+                  }
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="500">0.5 km</SelectItem>
+                  <SelectItem value="1000">1.0 km</SelectItem>
+                  <SelectItem value="1500">1.5 km</SelectItem>
+                  <SelectItem value="2000">2.0 km</SelectItem>
+                  <SelectItem value="3000">3.0 km</SelectItem>
+                  <SelectItem value="5000">5.0 km</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-gray-500">
+                Smaller radius = closer mechanics
+              </span>
+            </div>
+            
+            {/* Location warning for mock location */}
+            {coords && searchLocation.includes("Mock") && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-yellow-800">
+                    Using Test Location (Mumbai) - Not Your Real Location
+                  </span>
+                </div>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Click "Use GPS" for your actual location or "Clear Location" to start over.
+                </p>
+              </div>
+            )}
+            
             {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
           </CardContent>
         </Card>
@@ -343,6 +421,10 @@ export default function MechanicLocatorPage() {
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="text-lg font-semibold">{mechanic.name}</h3>
                       <Badge className="bg-green-100 text-green-800">Open</Badge>
+                      {/* Debug info badge */}
+                      {mechanic.phone && mechanic.address && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700">Complete Info</Badge>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
@@ -360,7 +442,45 @@ export default function MechanicLocatorPage() {
                       </div>
                     </div>
 
-                    <p className="text-gray-600 mb-3">{mechanic.address || "Address unavailable"}</p>
+                    <p className="text-gray-600 mb-3">{mechanic.address || "Address not provided"}</p>
+
+                    {/* Contact Information */}
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">Contact Information</h4>
+                      <div className="space-y-2">
+                        {mechanic.phone ? (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-green-600" />
+                            <span className="text-sm font-medium text-green-700">{mechanic.phone}</span>
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Available</Badge>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm text-gray-500">Phone number not available</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-sm text-gray-700">
+                              {mechanic.address || "Full address not available"}
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Coordinates: {mechanic.lat.toFixed(6)}, {mechanic.lng.toFixed(6)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {mechanic.openingHours && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-orange-600" />
+                            <span className="text-sm text-gray-700">{mechanic.openingHours}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
                     <div className="flex flex-wrap gap-2 mb-4">
                       <Badge variant="outline" className="text-xs">
@@ -371,22 +491,27 @@ export default function MechanicLocatorPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button variant="outline" size="sm" onClick={() => handleGetDirections(mechanic.address || `${mechanic.lat},${mechanic.lng}`)}>
                     <Navigation className="h-4 w-4 mr-2" />
-                    Directions
+                    Get Directions
                   </Button>
                   {mechanic.phone ? (
-                    <Button size="sm" onClick={() => handleEmergencyCall(mechanic.phone!)}>
+                    <Button size="sm" onClick={() => handleEmergencyCall(mechanic.phone!)} className="bg-green-600 hover:bg-green-700">
                       <Phone className="h-4 w-4 mr-2" />
-                      Call Now
+                      Call {mechanic.phone}
                     </Button>
                   ) : (
                     <Button size="sm" variant="secondary" disabled>
                       <Phone className="h-4 w-4 mr-2" />
-                      Phone N/A
+                      No Phone Listed
                     </Button>
                   )}
+                  <Button variant="outline" size="sm" onClick={() => {
+                    navigator.clipboard.writeText(`${mechanic.name}\nPhone: ${mechanic.phone || 'N/A'}\nAddress: ${mechanic.address || 'Not provided'}\nLocation: ${mechanic.lat}, ${mechanic.lng}`)
+                  }}>
+                    Copy Info
+                  </Button>
                 </div>
               </CardContent>
             </Card>
