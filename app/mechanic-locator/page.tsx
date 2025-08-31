@@ -1,5 +1,18 @@
 "use client"
 
+/*
+ * MAP IMPLEMENTATION:
+ * Currently using OpenStreetMap (free, no API key required)
+ * 
+ * TO UPGRADE TO GOOGLE MAPS (optional):
+ * 1. Go to https://console.cloud.google.com/
+ * 2. Create a new project or select an existing one
+ * 3. Enable the "Maps Static API" 
+ * 4. Create an API key in "Credentials"
+ * 5. Replace the OpenStreetMap iframe with Google Maps Static API
+ * 6. Optional: Restrict the API key to your domain for security
+ */
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -386,20 +399,92 @@ export default function MechanicLocatorPage() {
           />
         )}
 
-        {/* Map Placeholder */}
+        {/* Interactive Map View */}
         <Card className="mb-6">
-          <CardContent className="p-0">
-            <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-              <div className="text-center">
-                <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-600">Interactive Map View</p>
-                {coords ? (
-                  <p className="text-sm text-gray-500">Your position: {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}</p>
-                ) : (
-                  <p className="text-sm text-gray-500">Grant location access to find nearby mechanics</p>
-                )}
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Interactive Map View
+            </CardTitle>
+            {coords && (
+              <div className="text-sm text-gray-600 font-mono bg-gray-50 p-2 rounded flex justify-between items-center">
+                <span>Current Location: {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}</span>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${coords.lat}, ${coords.lng}`);
+                  }}
+                  className="h-6 px-2 text-xs"
+                >
+                  📋 Copy
+                </Button>
               </div>
-            </div>
+            )}
+          </CardHeader>
+          <CardContent className="p-0">
+            {coords ? (
+              <div className="relative">
+                {/* Free map using OpenStreetMap - no API key required */}
+                <div className="w-full h-64 bg-gray-100 rounded-b-lg overflow-hidden relative">
+                  {/* Map iframe using OpenStreetMap */}
+                  <iframe
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng-0.008},${coords.lat-0.008},${coords.lng+0.008},${coords.lat+0.008}&layer=mapnik&marker=${coords.lat},${coords.lng}`}
+                    className="w-full h-full border-0"
+                    title={`Map showing your location and nearby mechanics`}
+                    loading="lazy"
+                  />
+                  
+                  {/* Fallback static map if iframe doesn't work */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-green-50 to-blue-100 hidden items-center justify-center" id="fallback-map">
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <MapPin className="h-10 w-10 text-white" />
+                      </div>
+                      <p className="text-lg font-semibold text-gray-800">You are here</p>
+                      <p className="text-sm text-gray-600 font-mono bg-white px-2 py-1 rounded">
+                        {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+                      </p>
+                      {mechanics.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs text-gray-600 mb-2">{mechanics.length} mechanics nearby</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                  📍 Your Location
+                </div>
+                <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                  {mechanics.length} mechanics nearby
+                </div>
+                
+                {/* Open in Google Maps Button */}
+                <div className="absolute top-2 left-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="bg-white/90 backdrop-blur-sm hover:bg-white"
+                    onClick={() => {
+                      const url = `https://www.google.com/maps/@${coords.lat},${coords.lng},15z`;
+                      window.open(url, '_blank');
+                    }}
+                  >
+                    �️ Open in Google Maps
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="h-64 bg-gray-200 rounded-b-lg flex items-center justify-center">
+                <div className="text-center">
+                  <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-600">Interactive Map View</p>
+                  <p className="text-sm text-gray-500">Grant location access to see map</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
