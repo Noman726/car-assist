@@ -4,6 +4,11 @@
  * MAP IMPLEMENTATION:
  * Currently using OpenStreetMap (free, no API key required)
  * 
+ * EMERGENCY CALLING SYSTEM:
+ * - Enhanced emergency calling with confirmation dialogs
+ * - Multiple access points: main banner, floating button, keyboard shortcut
+ * - Comprehensive error handling and user feedback
+ * 
  * TO UPGRADE TO GOOGLE MAPS (optional):
  * 1. Go to https://console.cloud.google.com/
  * 2. Create a new project or select an existing one
