@@ -37,8 +37,8 @@ type Mechanic = {
 type LocationPermissionState = 'prompt' | 'granted' | 'denied' | 'unsupported'
 
 // Emergency phone number for car breakdowns (24/7 roadside assistance)
-const EMERGENCY_PHONE = "+91-9876543210" // Replace with actual emergency roadside assistance number
-const EMERGENCY_DISPLAY = "9876 543 210" // Formatted for display
+const EMERGENCY_PHONE = "+91-9890623407" // Replace with actual emergency roadside assistance number
+const EMERGENCY_DISPLAY = "9890 623 407" // Formatted for display
 
 export default function MechanicLocatorPage() {
   const [searchLocation, setSearchLocation] = useState("")
