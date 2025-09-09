@@ -1,22 +1,5 @@
 "use client"
 
-/*
- * MAP IMPLEMENTATION:
- * Currently using OpenStreetMap (free, no API key required)
- * 
- * EMERGENCY CALLING SYSTEM:
- * - Enhanced emergency calling with confirmation dialogs
- * - Multiple access points: main banner, floating button, keyboard shortcut
- * - Comprehensive error handling and user feedback
- * 
- * TO UPGRADE TO GOOGLE MAPS (optional):
- * 1. Go to https://console.cloud.google.com/
- * 2. Create a new project or select an existing one
- * 3. Enable the "Maps Static API" 
- * 4. Create an API key in "Credentials"
- * 5. Replace the OpenStreetMap iframe with Google Maps Static API
- * 6. Optional: Restrict the API key to your domain for security
- */
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
